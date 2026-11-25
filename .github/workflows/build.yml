@@ -1,0 +1,42 @@
+name: Gerar APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descompactar projeto
+        run: unzip -o TecladoRitmico.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Aceitar licencas do Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Compilar
+        working-directory: TecladoRitmico
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publicar APK em Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp TecladoRitmico/app/build/outputs/apk/debug/app-debug.apk Teclado-Ritmico.apk
+          gh release create "apk-${{ github.run_number }}" Teclado-Ritmico.apk \
+            --title "Teclado Ritmico APK #${{ github.run_number }}" \
+            --notes "APK de teste (debug)."
